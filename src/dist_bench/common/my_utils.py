@@ -38,7 +38,7 @@ def setup_distributed():
 
     # Setup
     torch.cuda.set_device(LOCAL_RANK)
-    dist.init_process_group(backend="nccl", init_method="env://")
+    dist.init_process_group(backend="nccl")
     device = torch.device("cuda", LOCAL_RANK)
     return RANK, LOCAL_RANK, WORLD_SIZE, device
 
