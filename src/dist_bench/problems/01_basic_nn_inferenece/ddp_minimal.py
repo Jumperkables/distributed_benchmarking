@@ -19,8 +19,6 @@ from dist_bench.common.my_utils import (
     rprint
 )
 
-# setup
-dist.init_process_group(backend="nccl")
 
 
 def main():
