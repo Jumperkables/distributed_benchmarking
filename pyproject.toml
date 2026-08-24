@@ -1,0 +1,41 @@
+[build-system]
+requires = [
+  "setuptools>=64",
+  "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "distributed_benchmarking"
+version = "0.0.0"
+description = "Benchmarking concepts of distributed computing in modern machine learning (2026)"
+readme = "README.md"
+requires-python = ">=3.14"
+
+authors = [{ name = "Jumperkables"}]
+
+# Requirements.txt style dependencies
+dependencies = [
+    "torch>=2.13.0",
+    "torchvision"
+]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu132", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+  { index = "pytorch-cu132", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+
+[[tool.uv.index]]
+name = "pytorch-cu132"
+url = "https://download.pytorch.org/whl/cu132"
+explicit = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
