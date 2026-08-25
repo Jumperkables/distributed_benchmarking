@@ -17,7 +17,7 @@ authors = [{ name = "Jumperkables"}]
 # Requirements.txt style dependencies
 dependencies = [
     "torch==2.13.0",
-    "torchvision==0.28.0"
+    "torchvision==0.28.0",
 ]
 
 [tool.setuptools.package-dir]
