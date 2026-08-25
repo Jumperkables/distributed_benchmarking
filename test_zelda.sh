@@ -6,4 +6,4 @@ torchrun \
     --rdzv-id=nccl-minimal-01 \
     --rdzv-backend=c10d \
     --rdzv-endpoint=192.168.1.124:29500 \
-    nccl_minimal.py
+    test_connection.py
