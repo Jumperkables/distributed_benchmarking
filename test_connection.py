@@ -35,6 +35,7 @@ print(f"[rank {rank}] initializing NCCL...", flush=True)
 
 dist.init_process_group(
     backend="nccl",
+    device_id=local_rank,
 )
 
 
@@ -55,9 +56,10 @@ if x.item() != expected:
         f"rank {rank}: expected {expected}, got {x.item()}"
     )
 
+
 print(f"[rank {rank}] SUCCESS", flush=True)
 
-dist.barrier()
+dist.barrier(device_ids=[local_rank])
 
 print(f"[rank {rank}] destroying process group", flush=True)
 
