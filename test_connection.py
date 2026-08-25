@@ -2,6 +2,18 @@ import os
 import torch
 import torch.distributed as dist
 
+
+#####################
+print("HOST:", os.uname().nodename, flush=True)
+print("RANK:", os.environ.get("RANK"), flush=True)
+print("LOCAL_RANK:", os.environ.get("LOCAL_RANK"), flush=True)
+print("WORLD_SIZE:", os.environ.get("WORLD_SIZE"), flush=True)
+print("MASTER_ADDR:", os.environ.get("MASTER_ADDR"), flush=True)
+print("MASTER_PORT:", os.environ.get("MASTER_PORT"), flush=True)
+#####################
+
+
+
 rank = int(os.environ["RANK"])
 local_rank = int(os.environ["LOCAL_RANK"])
 world_size = int(os.environ["WORLD_SIZE"])
