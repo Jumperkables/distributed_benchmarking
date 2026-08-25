@@ -37,6 +37,7 @@ dist.init_process_group(
     backend="nccl",
 )
 
+
 print(f"[rank {rank}] NCCL initialized", flush=True)
 
 x = torch.tensor([float(rank + 1)], device="cuda")
@@ -56,4 +57,10 @@ if x.item() != expected:
 
 print(f"[rank {rank}] SUCCESS", flush=True)
 
+dist.barrier()
+
+print(f"[rank {rank}] destroying process group", flush=True)
+
 dist.destroy_process_group()
+
+print(f"[rank {rank}] done", flush=True)
