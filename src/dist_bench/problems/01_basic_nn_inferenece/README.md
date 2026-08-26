@@ -85,5 +85,4 @@ I made a helper statement to print the rank and local rank of processes
 
 Obviously with nothing else strapped in, this just trains the same model twice across different GPUs.
 
-## 03 `DDP` Proper
-
+What I need to do next is to actually dip into `torch.distributed`. But first, I'm going to need to make my nodes communicate with eachother.
