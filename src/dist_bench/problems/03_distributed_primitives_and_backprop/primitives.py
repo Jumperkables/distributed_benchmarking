@@ -21,6 +21,7 @@ def main():
     print_dist_env_info()
     host, rank, local_rank, world_size, master_addr, master_port = get_dist_env_info()
     device = torch.device(f"cuda:{local_rank}")
+    import sys; sys.exit(0)
     # Init process
     dist.init_process_group(
         backend="nccl",

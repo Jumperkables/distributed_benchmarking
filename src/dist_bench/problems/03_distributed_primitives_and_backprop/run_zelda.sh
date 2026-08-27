@@ -1,9 +1,9 @@
-#export TORCH_DISTRIBUTED_DEBUG=DETAIL
-#export TORCH_CPP_LOG_LEVEL=INFO
-#export NCCL_DEBUG=INFO
-#export NCCL_DEBUG_SUBSYS=ALL
+export TORCH_DISTRIBUTED_DEBUG=DETAIL
+export TORCH_CPP_LOG_LEVEL=INFO
+export NCCL_DEBUG=INFO
+export NCCL_DEBUG_SUBSYS=ALL
 
-USE_BOTH_NODES=false
+USE_BOTH_NODES=true
 
 if [ "$USE_BOTH_NODES" = false ]; then
     echo "Running intra-node setup on zelda only"
@@ -27,5 +27,5 @@ torchrun \
     --nproc-per-node="$PROCS_PER_NODE" \
     --node-rank="$NODE_RANK" \
     --master-addr=192.168.1.124 \
-    --master-port=29501 \
+    --master-port=29500 \
     primitives.py

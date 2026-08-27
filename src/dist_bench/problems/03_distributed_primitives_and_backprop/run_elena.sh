@@ -12,5 +12,5 @@ torchrun \
     --nproc-per-node=1 \
     --node-rank=1 \
     --master-addr=192.168.1.124 \
-    --master-port=29501 \
+    --master-port=29500 \
     primitives.py
