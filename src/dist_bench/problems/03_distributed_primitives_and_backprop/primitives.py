@@ -20,17 +20,14 @@ def main():
     # Print dist info
     print_dist_env_info()
     host, rank, local_rank, world_size, master_addr, master_port = get_dist_env_info()
-
-    # Set CUDA device
-    torch.cuda.set_device(local_rank)
-
+    device = torch.device(f"cuda:{local_rank}")
     # Init process
     dist.init_process_group(
         backend="nccl",
-        device_id=local_rank,
+        device_id=device,
     )
     rprint(f"NCCL initialized")
-    x = torch.tensor([float(rank + 1)], device="cuda")
+    x = torch.tensor([float(rank + 1)], device=device)
     rprint(f"before all_reduce: {x.item()}")
     dist.all_reduce(x, op=dist.ReduceOp.SUM)
     rprint(f"after all_reduce: {x.item()}")
@@ -39,9 +36,9 @@ def main():
         raise RuntimeError(RHEADER+f"expected {expected}, got {x.item()}")
     rprint(f"SUCCESS")
     dist.barrier(device_ids=[local_rank])
-    rprint(f"Destroying process group", flush=True)
+    rprint(f"Destroying process group")
     dist.destroy_process_group()
-    rprint(f"Done", flush=True)
+    rprint(f"Done")
 
 
 

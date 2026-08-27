@@ -9,12 +9,12 @@ import torch.nn as nn
 # local imports
 
 # Env variables
-HOST = os.uname().nodename
-RANK = os.environ.get("RANK")
-LOCAL_RANK = os.environ.get("LOCAL_RANK")
-WORLD_SIZE = os.environ.get("WORLD_SIZE")
-MASTER_ADDR = os.environ.get("MASTER_ADDR")
-MASTER_PORT = os.environ.get("MASTER_PORT")
+HOST = str(os.uname().nodename)
+RANK = int(os.environ.get("RANK"))
+LOCAL_RANK = int(os.environ.get("LOCAL_RANK"))
+WORLD_SIZE = int(os.environ.get("WORLD_SIZE"))
+MASTER_ADDR = str(os.environ.get("MASTER_ADDR"))
+MASTER_PORT = int(os.environ.get("MASTER_PORT"))
 
 RHEADER = f"[Rank:{RANK}|Local rank:{LOCAL_RANK}|World size: {WORLD_SIZE}]: "
 
