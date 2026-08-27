@@ -16,6 +16,8 @@ WORLD_SIZE = os.environ.get("WORLD_SIZE")
 MASTER_ADDR = os.environ.get("MASTER_ADDR")
 MASTER_PORT = os.environ.get("MASTER_PORT")
 
+RHEADER = f"[Rank:{RANK}|Local rank:{LOCAL_RANK}|World size: {WORLD_SIZE}]: "
+
 
 
 def get_model_param_count(model: nn.Module, req_grad_only: bool = True) -> int:
@@ -37,6 +39,10 @@ def print_dist_env_info():
     rprint("WORLD_SIZE:", WORLD_SIZE)
     rprint("MASTER_ADDR:", MASTER_ADDR)
     rprint("MASTER_PORT:", MASTER_PORT)
+
+
+def get_dist_env_info():
+    return HOST, RANK, LOCAL_RANK, WORLD_SIZE, MASTER_ADDR, MASTER_PORT
 
 
 ##############

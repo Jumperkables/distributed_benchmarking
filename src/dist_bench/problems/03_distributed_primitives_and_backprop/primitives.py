@@ -7,48 +7,41 @@ import torch.distributed as dist
 
 # local imports
 from dist_bench.common.my_utils import (
+    get_dist_env_info,
     print_dist_env_info,
-    rprint
+    rprint,
+
+    RHEADER
 )
 
 
 
 def main():
-    rank = int(os.environ["RANK"])
-    local_rank = int(os.environ["LOCAL_RANK"])
-    world_size = int(os.environ["WORLD_SIZE"])
+    # Print dist info
+    print_dist_env_info()
+    host, rank, local_rank, world_size, master_addr, master_port = get_dist_env_info()
 
-    print(
-        f"[rank {rank}] starting: local_rank={local_rank}, "
-        f"world_size={world_size}",
-        flush=True,
-    )
+    # Set CUDA device
     torch.cuda.set_device(local_rank)
-    print(
-        f"[rank {rank}] GPU: {torch.cuda.get_device_name(local_rank)}",
-        flush=True,
-    )
-    print(f"[rank {rank}] initializing NCCL...", flush=True)
+
+    # Init process
     dist.init_process_group(
         backend="nccl",
         device_id=local_rank,
     )
-    print(f"[rank {rank}] NCCL initialized", flush=True)
+    rprint(f"NCCL initialized")
     x = torch.tensor([float(rank + 1)], device="cuda")
-    print(f"[rank {rank}] before all_reduce: {x.item()}", flush=True)
+    rprint(f"before all_reduce: {x.item()}")
     dist.all_reduce(x, op=dist.ReduceOp.SUM)
-    print(f"[rank {rank}] after all_reduce: {x.item()}", flush=True)
+    rprint(f"after all_reduce: {x.item()}")
     expected = 3.0
     if x.item() != expected:
-        raise RuntimeError(
-            f"rank {rank}: expected {expected}, got {x.item()}"
-        )
-
-    print(f"[rank {rank}] SUCCESS", flush=True)
+        raise RuntimeError(RHEADER+f"expected {expected}, got {x.item()}")
+    rprint(f"SUCCESS")
     dist.barrier(device_ids=[local_rank])
-    print(f"[rank {rank}] destroying process group", flush=True)
+    rprint(f"Destroying process group", flush=True)
     dist.destroy_process_group()
-    print(f"[rank {rank}] done", flush=True)
+    rprint(f"Done", flush=True)
 
 
 
