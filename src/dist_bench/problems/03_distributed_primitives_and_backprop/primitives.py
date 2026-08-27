@@ -15,7 +15,49 @@ from dist_bench.common.my_utils import (
 )
 
 
+####################
+# Collectives
+def broadcast():
+    print("TODO")
 
+
+def scatter():
+    print("TODO")
+
+
+def all_reduce():
+    print("TODO")
+
+
+def reduce():
+    print("Todo")
+
+
+def all_gather():
+    print("TODO")
+
+
+def gather():
+    print("TODO")
+
+
+####################
+# P2P
+def send():
+    print("TODO")
+
+
+def recv():
+    print("TODO")
+
+
+####################
+# Blocking vs non-blocking
+def blocking():
+    print("TODO")
+
+
+# Main
 def main():
     # Print dist info
     print_dist_env_info()
@@ -27,19 +69,15 @@ def main():
         backend="nccl",
         device_id=device,
     )
-    rprint(f"NCCL initialized")
+
+    #
     x = torch.tensor([float(rank + 1)], device=device)
-    rprint(f"before all_reduce: {x.item()}")
     dist.all_reduce(x, op=dist.ReduceOp.SUM)
-    rprint(f"after all_reduce: {x.item()}")
     expected = 3.0
     if x.item() != expected:
         raise RuntimeError(RHEADER+f"expected {expected}, got {x.item()}")
-    rprint(f"SUCCESS")
     dist.barrier(device_ids=[local_rank])
-    rprint(f"Destroying process group")
     dist.destroy_process_group()
-    rprint(f"Done")
 
 
 

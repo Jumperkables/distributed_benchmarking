@@ -16,6 +16,7 @@ else
     NODES=2
     PROCS_PER_NODE=1
     NODE_RANK=0
+    export CUDA_VISIBLE_DEVICES=0
     source ~/venvs/dist_bench_126/bin/activate
 fi
 
