@@ -9,9 +9,12 @@ import torch.nn as nn
 # local imports
 
 # Env variables
-LOCAL_RANK = int(os.environ["LOCAL_RANK"])
-RANK = int(os.environ["RANK"])
-WORLD_SIZE = int(os.environ["WORLD_SIZE"])
+HOST = os.uname().nodename
+RANK = os.environ.get("RANK")
+LOCAL_RANK = os.environ.get("LOCAL_RANK")
+WORLD_SIZE = os.environ.get("WORLD_SIZE")
+MASTER_ADDR = os.environ.get("MASTER_ADDR")
+MASTER_PORT = os.environ.get("MASTER_PORT")
 
 
 
@@ -27,6 +30,17 @@ def rprint(*args, **kwargs):
 
 
 
+def print_dist_env_info():
+    rprint("HOST:", HOST)
+    rprint("RANK:", RANK)
+    rprint("LOCAL_RANK:", LOCAL_RANK)
+    rprint("WORLD_SIZE:", WORLD_SIZE)
+    rprint("MASTER_ADDR:", MASTER_ADDR)
+    rprint("MASTER_PORT:", MASTER_PORT)
+
+
+##############
+# Deprecated
 def setup_distributed():
     # Make sure nothing strange has happened to env variables
     if os.environ["RANK"] != str(RANK):
