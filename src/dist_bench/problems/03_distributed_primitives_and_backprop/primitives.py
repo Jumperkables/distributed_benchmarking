@@ -22,7 +22,7 @@ DEVICE = torch.device(f"cuda:{LOCAL_RANK}")
 ####################
 # Collectives
 def broadcast():
-    val = float(RANK + 1)
+    val = float(RANK)
     rank_b = 1
     if RANK == rank_b:
         x = torch.ones(1024, device=DEVICE)*val
@@ -31,6 +31,8 @@ def broadcast():
     dist.broadcast(x, src=rank_b)
     rprint(x)
     dist.barrier(device_ids=[LOCAL_RANK])
+    success = torch.all(x == 1)
+    rprint(f"BROADCAST {success}: Expected all values in tensor == 1")
 
 
 def all_to_all():
@@ -38,7 +40,16 @@ def all_to_all():
 
 
 def scatter():
-    host, rank, local_rank, world_size, master_addr, master_port = get_dist_env_info()
+    rank_s = 0  # Scatter from rank 0 as the source
+    if RANK == rank_s:
+        to_scatter = [torch.ones(10, device=DEVICE)*1, torch.ones(10, device=DEVICE)*2]
+    else:
+        to_scatter = None   # Must be None on the non-source ranks i believe
+    output_tensor = torch.zeros(10, device=DEVICE)
+    dist.scatter(output_tensor, to_scatter, src=rank_s)
+    success = torch.all(output_tensor == RANK+1)
+    rprint(f"Scatter {success}: Expected all values in tensor == RANK+1, here {output_tensor[0]}")
+
 
 
 def reduce_scatter():
