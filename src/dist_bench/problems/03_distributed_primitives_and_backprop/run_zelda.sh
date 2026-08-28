@@ -3,7 +3,7 @@
 #export NCCL_DEBUG=INFO
 #export NCCL_DEBUG_SUBSYS=ALL
 
-USE_BOTH_NODES=true
+USE_BOTH_NODES=false
 
 if [ "$USE_BOTH_NODES" = false ]; then
     echo "Running intra-node setup on zelda only"
