@@ -26,6 +26,8 @@ def broadcast():
     rank_b = 1
     if RANK == rank_b:
         x = torch.ones(1024, device=DEVICE)*val
+    else:
+        x = torch.ones(1024, device=DEVICE)*999
     dist.broadcast(x, src=rank_b)
     rprint(x)
     dist.barrier(device_ids=[LOCAL_RANK])
