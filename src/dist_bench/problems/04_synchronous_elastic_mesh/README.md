@@ -19,3 +19,19 @@ So i figured I'd play around with `is_completed()` and `wait()` from `async_op=T
 - `async_op=True` gives a work object. I mostly need to just care about `wait()` and `is_completed()`
 
 Looks like a lot of the networking semantics and worries I would need to worry about in other APIs are abstracted away and I mostly just need to care about CUDA and CPU pipelines.
+
+
+### Accidentally making an operation synchronous when I wanted asynchronous
+I was trying to see for myself an intermediate where the work wasn't finished yet, get an average of a tensor as it was still being reduced using the following code:
+```py
+# Play around with some async ops and see what happens
+tensor = torch.randn((1000, 32, 128), device=DEVICE)
+big_reduce_handle = dist.all_reduce(tensor, op=dist.ReduceOp.SUM, async_op=True)
+start = time.time()
+while time.time()-start < 0.001:
+    print(f"{time.time()-start:.6f} | Avg of tensor {tensor.mean().item():.6f} | Completed?: {big_reduce_handle.is_completed()}")
+big_reduce_handle.wait()
+print(f"After wait: avg of tensor {tensor.mean().item():.6f} |")
+dist.destroy_process_group()
+```
+- The call of `.item()` might be actually waiting on the reduction before resolving, not what i want thinking
