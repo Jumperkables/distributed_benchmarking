@@ -46,4 +46,15 @@ At first, I thought this would be sufficient to run elastic jobs, fault tolerant
     --max-restarts=5 \
 ```
  If I wanted a more thorough elasticity e.g. robust to another node dropping off and still continuing, I'll need to handle another rendezvous.
- 
+
+It turns out, the `c10d` backend can handle this for me. I understand we pay a cost in performance for such elasticity, but its something I know how to do now.
+
+```bash
+    --rdzv-backend=c10d \
+    --rdzv-endpoint=192.168.1.124:29500 \
+    --max-restarts=5 \
+    $1
+```
+We don't need to specify `master-addr` or port anymore, nor even node rank. This takes care of it. `run_zelda/elena_elastic.sh` are now robust to losing one of the nodes, and continuing `elastic.py` by themselves.
+
+In ML application, we'd need proper checkpointing guards implemented.
