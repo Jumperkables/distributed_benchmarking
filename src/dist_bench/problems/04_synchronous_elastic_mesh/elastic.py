@@ -38,7 +38,7 @@ def main():
         if current - start > 10:
             if RANK == 1:
                 raise ValueError(RHEADER+f": Rank {RANK} failed")
-        tensor = torch.randn((64,8))
+        tensor = torch.randn((64,8)).to(DEVICE)
         rprint(f"Before: {tensor.mean().item():.2f}")
         dist.all_reduce(tensor)
         rprint(f"After: {tensor.mean().item():.2f}")
