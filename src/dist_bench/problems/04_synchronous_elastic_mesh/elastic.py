@@ -20,6 +20,7 @@ HOST, RANK, LOCAL_RANK, WORLD_SIZE, MASTER_ADDR, MASTER_PORT = get_dist_env_info
 DEVICE = torch.device(f"cuda:{LOCAL_RANK}")
 torch.cuda.set_device(DEVICE)
 
+torch.random.manual_seed(RANK)
 
 
 
@@ -29,7 +30,18 @@ def main():
     dist.init_process_group(backend="nccl", device_id=DEVICE)
 
     # Elastic launch - Fault tolerance
-
+    start = time.time()
+    for _ in range(100):
+        current = time.time()
+        time.sleep(1)
+        rprint(f"Elastic fault check: {current:.2f}")
+        if current - start > 10:
+            if RANK == 1:
+                raise ValueError(RHEADER+f": Rank {RANK} failed")
+        tensor = torch.randn((64,8))
+        rprint(f"Before: {tensor.mean().item():.2f}")
+        dist.all_reduce(tensor)
+        rprint(f"After: {tensor.mean().item():.2f}")
     dist.destroy_process_group()
 
 
