@@ -36,5 +36,14 @@ dist.destroy_process_group()
 ```
 - The call of `.mean().item()` might be actually waiting on the reduction before resolving, not what i want thinking. A minor point but worth me remembering.
 
+Turns out calling most any tensor operation i can think of is blocked (think CUDA pipelines). But the current state of `asynchronous.py` demonstrates async and waiting as a nice proof of concept.
+
 
 ## Elastic
+At first, I thought this would be sufficient to run elastic jobs, fault tolerant and allowing one of the 2 nodes to drop off. I had a script running `dist.all_reduce` that was designed to fail on node 1 after 10 seconds. Upon this failure however, both nodes rendezvous'd to try again, hitting a restart.
+```bash
+    --nnodes=1:2 \
+    --max-restarts=5 \
+```
+ If I wanted a more thorough elasticity e.g. robust to another node dropping off and still continuing, I'll need to handle another rendezvous.
+ 
