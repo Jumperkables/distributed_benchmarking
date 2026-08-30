@@ -143,10 +143,29 @@ If you're familiar with MPI this might sound strnage. I'm not an MPI expert but 
 
 
 # Minimal NN forward and backprop
-TODO:
-- Minimal neural network forward pass and backprop
-- Make sure that the gradients and optimiser states are the same on both nodes
-- Use torch.dist primitives to support it
+I made a minimal neural network forward pass and backprop. The goal will be implementing shared gradients and backpropagation through `torch.dist` primitives, before I move onto `DDP`.
 
-# Blocking vs Asynchronous
-A small exploration here
+## Debugging Distributed using PyCharm
+I use PyCharm for its excellent debugger. Turns out its rather straightforward to debug distributed code with PyCharm:
+- Don't bother having `torchrun` generate everything for you inside a bash script
+- Create 2 (or more depending on world size) run configurations from the same python file  with the same `MASTER_ADDR` and `MASTER_PORT` but with their respective `RANK` and `LOCAL_RANK`
+- Make sure you select the option for PyCharm to allow multiple instances of the same python file
+
+## Correctness
+For two minibatches, where the overall loss is the mean of the two losses:
+
+$$
+L = \frac{L_0 + L_1}{2}
+$$
+
+The gradient with respect to a parameter \(w\) is:
+
+$$
+\frac{\partial L}{\partial w}
+=
+\frac{\partial}{\partial w}
+\left(\frac{L_0 + L_1}{2}\right)
+$$
+
+Because differentiation is linear:
+![backprop](./fig_backprop.png)
