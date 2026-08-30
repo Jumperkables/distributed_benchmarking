@@ -159,13 +159,7 @@ L = \frac{L_0 + L_1}{2}
 $$
 
 The gradient with respect to a parameter \(w\) is:
-
-$$
-\frac{\partial L}{\partial w}
-=
-\frac{\partial}{\partial w}
-\left(\frac{L_0 + L_1}{2}\right)
-$$
+![lin_diff](./fig_diff.png)
 
 Because differentiation is linear:
 ![backprop](./fig_backprop.png)
