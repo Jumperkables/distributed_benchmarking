@@ -8,9 +8,10 @@ source ~/venvs/dist_bench_126/bin/activate
 which python
 
 torchrun \
-    --nnodes=2 \
+    --nnodes=1:2 \
     --nproc-per-node=1 \
     --node-rank=1 \
     --master-addr=192.168.1.124 \
     --master-port=29500 \
+    --max-restarts=5 \
     $1

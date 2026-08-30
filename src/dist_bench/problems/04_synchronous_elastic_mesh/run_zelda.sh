@@ -7,13 +7,13 @@ USE_BOTH_NODES=true
 
 if [ "$USE_BOTH_NODES" = false ]; then
     echo "Running intra-node setup on zelda only"
-    NODES=1
+    NODES=1:2
     PROCS_PER_NODE=2
     NODE_RANK=0
     source ~/venvs/dist_bench_132/bin/activate
 else
     echo "Running inter-node setup across zelda and elena"
-    NODES=2
+    NODES=1:2
     PROCS_PER_NODE=1
     NODE_RANK=0
     export CUDA_VISIBLE_DEVICES=0
@@ -29,4 +29,5 @@ torchrun \
     --node-rank="$NODE_RANK" \
     --master-addr=192.168.1.124 \
     --master-port=29500 \
+    --max-restarts=5 \
     $1

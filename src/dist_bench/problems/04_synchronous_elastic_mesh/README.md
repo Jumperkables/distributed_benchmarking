@@ -34,4 +34,7 @@ big_reduce_handle.wait()
 print(f"After wait: avg of tensor {tensor.mean().item():.6f} |")
 dist.destroy_process_group()
 ```
-- The call of `.item()` might be actually waiting on the reduction before resolving, not what i want thinking
+- The call of `.mean().item()` might be actually waiting on the reduction before resolving, not what i want thinking. A minor point but worth me remembering.
+
+
+## Elastic
