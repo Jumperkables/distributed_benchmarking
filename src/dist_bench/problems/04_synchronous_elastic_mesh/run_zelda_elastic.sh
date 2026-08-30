@@ -26,8 +26,9 @@ export NCCL_SOCKET_IFNAME=enp15s0
 torchrun \
     --nnodes="$NODES" \
     --nproc-per-node="$PROCS_PER_NODE" \
-    --node-rank="$NODE_RANK" \
     --rdzv-backend=c10d \
     --rdzv-endpoint=192.168.1.124:29500 \
+    --master-addr=192.168.1.124 \
+    --master-port=29500 \
     --max-restarts=5 \
     $1

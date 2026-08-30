@@ -10,8 +10,9 @@ which python
 torchrun \
     --nnodes=1:2 \
     --nproc-per-node=1 \
-    --node-rank=1 \
     --rdzv-backend=c10d \
     --rdzv-endpoint=192.168.1.124:29500 \
+    --master-addr=192.168.1.124 \
+    --master-port=29500 \
     --max-restarts=5 \
     $1
