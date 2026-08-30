@@ -33,7 +33,7 @@ def main():
     big_reduce_handle = dist.all_reduce(tensor, op=dist.ReduceOp.SUM, async_op=True)
     start = time.time()
     while time.time()-start < 0.001:
-        rprint(f"{time.time()-start:.6f} | Avg of tensor {tensor.mean():.6f} | Completed?: {big_reduce_handle.is_completed()}")
+        rprint(f"{time.time()-start:.6f} | Completed?: {big_reduce_handle.is_completed()}")
     big_reduce_handle.wait()
     rprint(f"After wait: avg of tensor {tensor.mean():.6f} |")
     dist.destroy_process_group()
