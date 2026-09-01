@@ -243,7 +243,7 @@ def multi_gpu_uneven_batches():
     if RANK == 0:
         BATCH_SIZE = 12
     if RANK == 1:
-        BATCH_SIZE = 5
+        BATCH_SIZE = 3
     # Get the largest batch size across all ranks and scale the rest according to that
     biggest_bsz = torch.tensor(BATCH_SIZE, device=DEVICE)
     dist.all_reduce(biggest_bsz, op=dist.ReduceOp.MAX)
