@@ -13,4 +13,4 @@ torchrun \
     --node-rank=1 \
     --master-addr=192.168.1.124 \
     --master-port=29500 \
-    $1
+    $1 $2
