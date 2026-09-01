@@ -58,3 +58,13 @@ It turns out, the `c10d` backend can handle this for me. I understand we pay a c
 We don't need to specify `master-addr` or port anymore, nor even node rank. This takes care of it. `run_zelda/elena_elastic.sh` are now robust to losing one of the nodes, and continuing `elastic.py` by themselves.
 
 In ML application, we'd need proper checkpointing guards implemented.
+
+
+## Device Meshes
+As i understand from the docs, device meshes are great ways to manage composable inter and intra node setups. Suppose i had 3 nodes with 2 GPUs each, and i wanted 2 of those nodes (4GPUs) to do decode work, and the final node (2 GPUs) to do prefill work, I could use a device mesh for that:
+
+```py
+from torch.distributed.device_mesh import init_device_mesh
+
+mash_2d = init_device_mesh('cuda', (3, 2), mesh_dim_names=('decode0', 'decode1', 'prefill'))
+```
