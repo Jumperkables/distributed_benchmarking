@@ -22,8 +22,8 @@ else:
     from dist_bench.common.my_utils import rprint, get_dist_env_info    # Cursed placement of an import lawd 4give me
     HOST, RANK, LOCAL_RANK, WORLD_SIZE, MASTER_ADDR, MASTER_PORT = get_dist_env_info()
     DEVICE = torch.device(f"cuda:{LOCAL_RANK}")
+    torch.cuda.set_device(DEVICE)
 
-torch.cuda.set_device(DEVICE)
 NUM_SAMPLES = 2_000
 LEARNING_RATE = 5e-5
 EPOCHS = 1
