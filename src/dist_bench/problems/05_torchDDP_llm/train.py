@@ -16,7 +16,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 # globals
-if os.environ["LOCAL_RANK"] is None:
+if "LOCAL_RANK" not in os.environ:
     DEVICE = torch.device("cuda")
 else:
     from dist_bench.common.my_utils import rprint, get_dist_env_info    # Cursed placement of an import lawd 4give me
