@@ -39,24 +39,6 @@ dataloader = DataLoader(
 
 
 
-## Benchmarking
-Initially I'm going to simplify the benchmarking criteria to just tokens per second
-
-
-| Experiment | Node setup | GPU utilisation `nvtop`   | Batch size | Seq length | Model size |    VRAM Used (GB) | Distributed Algorithm | Tokens per second |
-|:-----------|:-----------|:--------------------------|-----------:|-----------:|-----------:|------------------:|----------------------:|------------------:|
-|            | 0          | 3090   (99%)              |          4 |       2700 |       135M |           22.2/24 |                   N/A |             18700 |
-|            | 0          | 3090   (99%)              |          4 |       1000 |       135M |            8.6/24 |                   N/A |             23700 |
-|            | 0          | 3090   (99%)              |         12 |       1000 |       135M |           21.4/24 |                   N/A |             25700 |
-|            | 0          | 3090   (99%)              |          7 |       1000 |       135M |           14.3/24 |                   N/A |             24650 |
-|            | 0          | 5060ti (99%)              |          7 |       1000 |       135M |           14.3/16 |                   N/A |             18550 |
-|            |            |                           |            |            |            |                   |                       |                   |
-|            |            |                           |            |            |            |                   |                       |                   |
-|            | 0          | 3090   (99%)              |         10 |        800 |       360M |           23.0/24 |                   N/A |             13300 |
-|            | 0          | 3090   (99%)              |         10 |        500 |       360M |           15.0/16 |                   N/A |             13900 |
-|            | 0          | 5060ti (84%)              |         10 |        500 |       360M |           15.0/16 |                   N/A |             10200 |
-|            | 0          | 3090   (85%) 5060ti (79%) |    10 + 10 |        500 |       360M | 15.0/16 + 15.0/16 |             torch.DDP | 9720+9699 = 19419 |
-
 
 ## Analysis
 - Broadly, `torch.DDP` is working fantastically here. I've shown that distributing the DDP setup and increase total tokens per second throughput in training.
@@ -84,3 +66,70 @@ GPU 1: Bsz  5 -> Loss = 20 -|
   - [PT Issue - Support uneven DDP inputs](https://github.com/pytorch/pytorch/issues/33148#issuecomment-584400677)
   - [Supporting different bszs](https://github.com/pytorch/pytorch/issues/67253)
   - This one is awesome: [Use DDP communucation hooks to scale the grads](https://docs.pytorch.org/docs/2.13/ddp_comm_hooks.html)
+
+I actually decided to implement this myself:
+1. Perform a max reduction across batch sizes, get the largest batch size, and scale every other loss relative to it:
+```py
+biggest_bsz = torch.tensor(BATCH_SIZE, device=DEVICE)
+dist.all_reduce(biggest_bsz, op=dist.ReduceOp.MAX)
+bsz_loss_scale = BATCH_SIZE / biggest_bsz.item()
+rprint(f"Bsz of this rank: {BATCH_SIZE}")
+rprint(f"Largest bsz across ranks: {biggest_bsz}")
+rprint(f"Loss scale factor for this rank: {bsz_loss_scale}")
+```
+2. ChatGPT helped me understand the way to write hooks:
+```py
+def weighted_grad_hook(state, bucket):
+    grad = bucket.buffer()
+
+    # Scale the gradient by this rank's scale factor
+    grad.mul_(state.scale)
+
+    # Sum the now-scaled contributions across all ranks
+    work = dist.all_reduce(
+        grad,
+        op=dist.ReduceOp.SUM,
+        async_op=True
+    )
+    return work.get_future().then(
+        lambda future: future.value()[0]
+    )
+
+@dataclass
+class GradScaleState:
+    scale: float
+
+...
+...
+state = GradScaleState(scale=bsz_loss_scale)
+model = DDP(model)
+model.register_comm_hook(state, weighted_grad_hook)
+```
+3. It worked!!!! ![yay](./fig_uneven_bszs.png) ![nvtop](./fig_nvidia_smi.png)
+4. If I wanted to push this demo any further, I would adjust the sampler logic per rank such that there is an even number of batches, or any final uneven ones silently return 0. But I have better things to move onto.
+
+
+
+## Benchmarking
+I'm going to simplify the benchmarking criteria to just tokens per second
+
+| Notes                         | Node setup | GPU utilisation `nvtop`   | Batch size | Seq length | Model size |    VRAM Used (GB) |  Distributed Algorithm |   Tokens per second |
+|:------------------------------|:-----------|:--------------------------|-----------:|-----------:|-----------:|------------------:|-----------------------:|--------------------:|
+|                               | 0          | 3090   (99%)              |          4 |       2700 |       135M |           22.2/24 |                    N/A |               18700 |
+|                               | 0          | 3090   (99%)              |          4 |       1000 |       135M |            8.6/24 |                    N/A |               23700 |
+|                               | 0          | 3090   (99%)              |         12 |       1000 |       135M |           21.4/24 |                    N/A |               25700 |
+|                               | 0          | 3090   (99%)              |          7 |       1000 |       135M |           14.3/24 |                    N/A |               24650 |
+|                               | 0          | 5060ti (99%)              |          7 |       1000 |       135M |           14.3/16 |                    N/A |               18550 |
+|                               | 0          | 3090   (83%) 5060ti (75%) |      7 + 7 |       1000 |       135M | 14.3/24 + 14.3/16 |              torch.DDP | 18019+18008 = 36027 |
+| Uneven batches implementation | 0          | 3090   (96%) 5060ti (63%) |     12 + 7 |       1000 |       135M | 22.5/24 + 14.9/16 | torch.DDP (batch hook) | 25100+15000 = 40200 |
+|                               | 1          | 1080ti (%)                |          5 |       1000 |       135M |               /11 |                    N/A |                     |
+| Inter node setup              | 0 + 1      | 3090   (%) 1080ti (%)     |     12 + 5 |       1000 |       135M |     22.5/24 + /11 | torch.DDP (batch hook) |                     |
+|                               |            |                            |            |            |            |                   |                        |                     |
+|                               | 0          | 3090   (99%)               |         10 |        800 |       360M |           23.0/24 |                    N/A |               13300 |
+|                               | 0          | 3090   (99%)               |         10 |        500 |       360M |           15.0/16 |                    N/A |               13900 |
+|                               | 0          | 5060ti (84%)               |         10 |        500 |       360M |           15.0/16 |                    N/A |               10200 |
+|                               | 0          | 3090   (85%) 5060ti (79%)  |    10 + 10 |        500 |       360M | 15.0/16 + 15.0/16 |              torch.DDP |   9720+9699 = 19419 |
+
+
+- Using my uneven batching method, I've managed to squeeze another 4000 tokens per second out of my heterogeneous node setup.
+  - See `uneven batches implementation`
