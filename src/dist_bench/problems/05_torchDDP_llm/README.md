@@ -113,23 +113,26 @@ model.register_comm_hook(state, weighted_grad_hook)
 ## Benchmarking
 I'm going to simplify the benchmarking criteria to just tokens per second
 
-| Notes                         | Node setup | GPU utilisation `nvtop`   | Batch size | Seq length | Model size |    VRAM Used (GB) |  Distributed Algorithm |   Tokens per second |
-|:------------------------------|:-----------|:--------------------------|-----------:|-----------:|-----------:|------------------:|-----------------------:|--------------------:|
-|                               | 0          | 3090   (99%)              |          4 |       2700 |       135M |           22.2/24 |                    N/A |               18700 |
-|                               | 0          | 3090   (99%)              |          4 |       1000 |       135M |            8.6/24 |                    N/A |               23700 |
-|                               | 0          | 3090   (99%)              |         12 |       1000 |       135M |           21.4/24 |                    N/A |               25700 |
-|                               | 0          | 3090   (99%)              |          7 |       1000 |       135M |           14.3/24 |                    N/A |               24650 |
-|                               | 0          | 5060ti (99%)              |          7 |       1000 |       135M |           14.3/16 |                    N/A |               18550 |
-|                               | 0          | 3090   (83%) 5060ti (75%) |      7 + 7 |       1000 |       135M | 14.3/24 + 14.3/16 |              torch.DDP | 18019+18008 = 36027 |
-| Uneven batches implementation | 0          | 3090   (96%) 5060ti (63%) |     12 + 7 |       1000 |       135M | 22.5/24 + 14.9/16 | torch.DDP (batch hook) | 25100+15000 = 40200 |
-|                               | 1          | 1080ti (95%)              |          3 |       1000 |       135M |           10.2/11 |                    N/A |                3520 |
-| Inter node setup              | 0 + 1      | 3090   (%) 1080ti (%)     |     12 + 5 |       1000 |       135M |     22.5/24 + /11 | torch.DDP (batch hook) |                     |
-|                               |            |                           |            |            |            |                   |                        |                     |
-|                               | 0          | 3090   (99%)              |         10 |        800 |       360M |           23.0/24 |                    N/A |               13300 |
-|                               | 0          | 3090   (99%)              |         10 |        500 |       360M |           15.0/16 |                    N/A |               13900 |
-|                               | 0          | 5060ti (84%)              |         10 |        500 |       360M |           15.0/16 |                    N/A |               10200 |
-|                               | 0          | 3090   (85%) 5060ti (79%) |    10 + 10 |        500 |       360M | 15.0/16 + 15.0/16 |              torch.DDP |   9720+9699 = 19419 |
+| Notes                         | Node setup | GPU utilisation `nvtop`    | Batch size | Seq length | Model size |    VRAM Used (GB) |  Distributed Algorithm |   Tokens per second |
+|:------------------------------|:-----------|:---------------------------|-----------:|-----------:|-----------:|------------------:|-----------------------:|--------------------:|
+|                               | 0          | 3090   (99%)               |          4 |       2700 |       135M |           22.2/24 |                    N/A |               18700 |
+|                               | 0          | 3090   (99%)               |          4 |       1000 |       135M |            8.6/24 |                    N/A |               23700 |
+|                               | 0          | 3090   (99%)               |         12 |       1000 |       135M |           21.4/24 |                    N/A |               25700 |
+|                               | 0          | 3090   (99%)               |          7 |       1000 |       135M |           14.3/24 |                    N/A |               24650 |
+|                               | 0          | 5060ti (99%)               |          7 |       1000 |       135M |           14.3/16 |                    N/A |               18550 |
+|                               | 0          | 3090   (83%) 5060ti (75%)  |      7 + 7 |       1000 |       135M | 14.3/24 + 14.3/16 |              torch.DDP | 18019+18008 = 36027 |
+| Uneven batches implementation | 0          | 3090   (96%) 5060ti (63%)  |     12 + 7 |       1000 |       135M | 22.5/24 + 14.9/16 | torch.DDP (batch hook) | 25100+15000 = 40200 |
+|                               | 1          | 1080ti (95%)               |          3 |       1000 |       135M |           10.2/11 |                    N/A |                3520 |
+| Inter node setup              | 0 + 1      | 3090   (43%) 1080ti (100%) |     12 + 3 |       1000 |       135M | 22.5/24 + 10.5/11 | torch.DDP (batch hook) |    4345+1084 = 5429 |
+|                               |            |                            |            |            |            |                   |                        |                     |
+|                               | 0          | 3090   (99%)               |         10 |        800 |       360M |           23.0/24 |                    N/A |               13300 |
+|                               | 0          | 3090   (99%)               |         10 |        500 |       360M |           15.0/16 |                    N/A |               13900 |
+|                               | 0          | 5060ti (84%)               |         10 |        500 |       360M |           15.0/16 |                    N/A |               10200 |
+|                               | 0          | 3090   (85%) 5060ti (79%)  |    10 + 10 |        500 |       360M | 15.0/16 + 15.0/16 |              torch.DDP |   9720+9699 = 19419 |
 
 
 - Using my uneven batching method, I've managed to squeeze another 4000 tokens per second out of my heterogeneous node setup.
   - See `uneven batches implementation`
+- We can see the `1080ti` performance is much worse than both of GPUs, check the only row with `node setup = 1`. Approximately 3520 tokens/s
+- Note for the inter-node setup, of course the much faster `3090` is underutilised and bottlenecked. Interestingly however, the `1080ti` contributiosn are roughly 33% of what they were before. Down from `3520` to `1084` tokens per second
+  - I suspect this is largely down to the networking overhead between the nodes.
