@@ -8,7 +8,7 @@ source ~/venvs/dist_bench_126/bin/activate
 which python
 
 torchrun \
-    --nnodes=1:2 \
+    --nnodes=2 \
     --nproc-per-node=1 \
     --node-rank=1 \
     --master-addr=192.168.1.124 \
