@@ -148,15 +148,21 @@ I'm going to simplify the benchmarking criteria to just tokens per second
 
 ![Buckets backwards](./fig_bucket.png)
 
-- vary the `bucket_cap_mb` parameter
 
-## Bottlneck identification and profiling
-- `sar -n DEV 1`
-- `iftop -i IF`
-- `nvtop`
-- `torch.profiler`
+## Profiling
+Using `torch.profiler` and tensorboard together, we can visualise distributed performance quite nicely:
 
-## Unused parameters
+Looking at the `GPU kernel` section first. We see the NCCL `all_reduce` runtime is about 46.6%. This is the inter device all reduce communication. We also see the typical tensor core utilisation (for GEMM) is scaled lower accounting for this overhead.
+![first](./fig_prof_kern.png)
 
+Next, lets looks at the **trace** view of a given step. The diagram below demonstrates the relative runtime of each part of the torch calculation, including the individual all_reduce commands for each bucket. The overlapping runtime of these bucket all reduces and the backwards pass, and hence time saved can be seen clearly.
+![intra](./fig_prof_intra.png)
 
-## 
+Below is a visualisation of just how much slower my **inter node** setup is. The 3090 and the 1080ti communicating across 2 different computers via my router. Notice how small the forward and backwards passes are relative to the runtime of the all reduce. A clear profiling demonstration of the network overhead dominating runtime.
+![inter](./fig_prof_inter.png)
+
+Now, we see the real effect of varying the size of each gradient bucket via the `bucket_cap_mb` parameter. It is by default set to `25MB`. Have a bucket cap of `5MB`, we can see many more individual `nccl all_reduce` calls for each individual bucket. This doesn't seem to have impacted runtime on the faster intra-node setup.
+![](./fig_prof_intra_small_buckets.png)
+
+Finally, given the network overhead in the slower inter-node setup. I was curious if having one single large bucket would make more efficient network transfer happen, and serve as a rule of thumb to do for setups with unavoidably poor networking speeds. However, it seems to have actually increased runtime. Interesting!!
+![](./fig_prof_inter_one_bucket.png)
