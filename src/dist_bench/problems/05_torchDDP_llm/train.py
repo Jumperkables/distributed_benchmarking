@@ -143,7 +143,9 @@ def single_gpu():
 def multi_gpu_profile():
     global model
     dist.init_process_group(backend="nccl")
-    model = DDP(model)
+    model = DDP(model, bucket_cap_mb=1000)
+    rprint(model._get_ddp_logging_data())
+    #import sys; sys.exit(0)
 
     # Dataloader
     dataloader = DataLoader(
@@ -176,7 +178,7 @@ def multi_gpu_profile():
             ],
             schedule=prof_schedule,
             on_trace_ready=torch.profiler.tensorboard_trace_handler(
-                f"./traces_NNodes-{os.environ['NNODES']}_rank-{RANK}"
+                f"./traces_NNodes-{os.environ['NNODES']}_rank-{RANK}_bigBuckets"
             ),
             record_shapes=True,
             profile_memory=True,

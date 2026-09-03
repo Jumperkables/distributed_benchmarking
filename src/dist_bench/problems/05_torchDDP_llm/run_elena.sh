@@ -3,7 +3,7 @@
 #export NCCL_DEBUG=INFO
 #export NCCL_DEBUG_SUBSYS=ALL
 export CUDA_VISIBLE_DEVICES=0
-export NNODES=NODES
+export NNODES=2
 export NCCL_SOCKET_IFNAME=enp2s0
 source ~/venvs/dist_bench_126/bin/activate
 which python
