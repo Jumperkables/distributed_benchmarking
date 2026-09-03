@@ -8,6 +8,7 @@ from datasets import load_dataset
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.profiler import profile, schedule
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -136,6 +137,99 @@ def single_gpu():
     print(f"Total time: {elapsed:.2f} seconds")
     print(f"Total tokens: {total_tokens}")
     print(f"Average tokens/sec: {total_tokens / elapsed:.2f}")
+
+
+
+def multi_gpu_profile():
+    global model
+    dist.init_process_group(backend="nccl")
+    model = DDP(model)
+
+    # Dataloader
+    dataloader = DataLoader(
+        dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=False,  # Docs says that shuffle needs to be false when using a distributed sampler
+        sampler=DistributedSampler(dataset),
+    )
+
+    # optimizer
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=LEARNING_RATE,
+    )
+
+
+    ##################################################
+    # Profiler additions
+    prof_schedule = schedule(
+        wait=2,
+        warmup=2,
+        active=4,
+        repeat=1,
+    )
+
+    with profile(
+            activities=[
+                torch.profiler.ProfilerActivity.CPU,
+                torch.profiler.ProfilerActivity.CUDA,
+            ],
+            schedule=prof_schedule,
+            on_trace_ready=torch.profiler.tensorboard_trace_handler(
+                f"./traces_NNodes-{os.environ['NNODES']}_rank-{RANK}"
+            ),
+            record_shapes=True,
+            profile_memory=True,
+    ) as prof:
+        ##################################################
+        # training
+        total_tokens = 0
+        start_time = time.perf_counter()
+        step_time = 0
+        step_tokens = 0
+        for epoch in range(EPOCHS):
+            for step, batch in enumerate(dataloader):
+
+                input_ids = batch["input_ids"].to(DEVICE)
+                attention_mask = batch["attention_mask"].to(DEVICE)
+
+                # For causal language modelling, labels are the input tokens.
+                outputs = model(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    labels=input_ids,
+                )
+
+                loss = outputs.loss
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                prof.step()
+
+                tokens = input_ids.numel()
+                total_tokens += tokens
+                step_tokens += tokens
+
+                # logging
+                if step % 10 == 0:
+                    elapsed = time.perf_counter() - start_time
+                    rprint(
+                        f"epoch={epoch} "
+                        f"step={step} "
+                        f"loss={loss.item():.4f} "
+                        f"tokens={total_tokens} "
+                        f"total tokens/sec={total_tokens / elapsed:.1f} "
+                        f"current tokens/sec={step_tokens/(time.perf_counter()-step_time):.1f} "
+                    )
+                    step_time = time.perf_counter()
+                    step_tokens = 0
+        elapsed = time.perf_counter() - start_time
+        rprint("\nTraining complete")
+        rprint(f"Total time: {elapsed:.2f} seconds")
+        rprint(f"Total tokens: {total_tokens}")
+        rprint(f"Average tokens/sec: {total_tokens / elapsed:.2f}")
+        dist.destroy_process_group()
 
 
 
@@ -325,6 +419,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', action='store_true', help='single gpu training', default=False)
     parser.add_argument('-m', action='store_true', help='multi gpu training', default=False)
+    parser.add_argument('-p', action='store_true', help='multi gpu training with the profiler', default=False)
     parser.add_argument('-u', action='store_true', help='multi gpu training with uneven batches allowed', default=False)
     args = parser.parse_args()
 
@@ -336,3 +431,6 @@ if __name__ == "__main__":
 
     if args.u:
         multi_gpu_uneven_batches()
+
+    if args.p:
+        multi_gpu_profile()

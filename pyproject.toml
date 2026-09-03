@@ -17,6 +17,8 @@ authors = [{ name = "Jumperkables"}]
 # Requirements.txt style dependencies
 dependencies = [
     "datasets==5.0.1",
+    "tensorboard==2.21.0",
+    "torch-tb-profiler",
     "torch==2.13.0",
     "torchvision==0.28.0",
     "transformers==5.16.1",

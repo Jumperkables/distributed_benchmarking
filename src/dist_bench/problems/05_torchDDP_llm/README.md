@@ -136,3 +136,27 @@ I'm going to simplify the benchmarking criteria to just tokens per second
 - We can see the `1080ti` performance is much worse than both of GPUs, check the only row with `node setup = 1`. Approximately 3520 tokens/s
 - Note for the inter-node setup, of course the much faster `3090` is underutilised and bottlenecked. Interestingly however, the `1080ti` contributiosn are roughly 33% of what they were before. Down from `3520` to `1084` tokens per second
   - I suspect this is largely down to the networking overhead between the nodes.
+
+
+## Gradient buckets
+- A key to efficient parallel/distributed workloads is overlapping otherwise-sequential work intelligently. For `torch.DDP`, we want `HBM` memory requests or sending data across `NICs` happening while we take care of the remaining computation.
+
+- [This discussion post](https://dev-discuss.pytorch.org/t/torchdynamo-update-9-making-ddp-work-with-torchdynamo/860) has a nice visualisation on how gradient buckets work.
+  - The subject matter is about changes to make torchdynamo work better with DDP. For those interested, it basically comes down to breaking up the `fx` graph into buckets too.
+
+![Naive backwards without bucket](./fig_naive_bucket.png)
+
+![Buckets backwards](./fig_bucket.png)
+
+- vary the `bucket_cap_mb` parameter
+
+## Bottlneck identification and profiling
+- `sar -n DEV 1`
+- `iftop -i IF`
+- `nvtop`
+- `torch.profiler`
+
+## Unused parameters
+
+
+## 
