@@ -102,7 +102,6 @@ def single_gpu():
             input_ids = batch["input_ids"].to(DEVICE)
             attention_mask = batch["attention_mask"].to(DEVICE)
 
-            # For causal language modelling, labels are the input tokens.
             outputs = model(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
