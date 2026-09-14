@@ -22,7 +22,7 @@ NUM_SAMPLES = 2_000
 LEARNING_RATE = 5e-5
 EPOCHS = 1
 MODEL_NAME = "HuggingFaceTB/SmolLM2-135M"#"HuggingFaceTB/SmolLM3-3B"
-BATCH_SIZE = 12
+BATCH_SIZE = 5
 SEQ_LENGTH = 1000
 
 
@@ -39,7 +39,7 @@ model.train()
 ##################################
 # FSDPModule
 FSDP = 'Decoder'
-FSDP = 'SubDecoder'
+#FSDP = 'SubDecoder'
 
 match FSDP:
     case 'Decoder':
@@ -116,7 +116,15 @@ dataset.set_format(
 dataloader = DataLoader(dataset, batch_size=BATCH_SIZE)
 
 
+saved_bytes = 0
 
+def pack_hook(tensor):
+    global saved_bytes
+    saved_bytes += tensor.numel() * tensor.element_size()
+    return tensor
+
+def unpack_hook(tensor):
+    return tensor
 
 
 def main():
@@ -137,18 +145,55 @@ def main():
             input_ids = batch["input_ids"].to(DEVICE)
             attention_mask = batch["attention_mask"].to(DEVICE)
 
-            outputs = model(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                labels=input_ids,
+            with torch.autograd.graph.saved_tensors_hooks(
+                    pack_hook,
+                    unpack_hook,
+            ):
+                before = torch.cuda.memory_allocated()
+                outputs = model(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    labels=input_ids,
+                )
+                torch.cuda.synchronize()
+
+                peak = torch.cuda.max_memory_allocated()
+
+                loss = outputs.loss
+
+                print("Activations baseline:", before / 2 ** 30, "GB")
+                print("Activations peak:    ", peak / 2 ** 30, "GB")
+                print("Activations increase:", (peak - before) / 2 ** 30, "GB")
+
+                optimizer.zero_grad()
+                print(f"Memory allocated (before backward): {torch.cuda.memory_allocated(DEVICE)/1024**3:.2f} GB")
+                print(f"Memory reserved (before backward): {torch.cuda.memory_reserved(DEVICE)/1024**3:.2f} GB")
+                print("BACKWARDS BEGINS")
+                loss.backward()
+
+            # Measure VRAM burdens
+            param_bytes_logical = sum(
+                p.numel() * p.element_size()
+                for p in model.parameters()
+            )
+            param_bytes_local = sum(
+                p.to_local().numel() * p.element_size()
+                for p in model.parameters()
+            )
+            grad_bytes = sum(
+                p.grad.numel() * p.grad.element_size()
+                for p in model.parameters()
+                if p.grad is not None
             )
 
-            loss = outputs.loss
+            print(f"saved activations: {saved_bytes / 1024 ** 2:.1f} MB")
+            print(f"parameters logical: {param_bytes_logical / 1024 ** 2:.1f} MB")
+            print(f"parameters local: {param_bytes_local / 1024 ** 2:.1f} MB")
+            print(f"gradients:  {grad_bytes / 1024 ** 2:.1f} MB")
+            print(f"Memory allocated (after backward): {torch.cuda.memory_allocated(DEVICE)/1024**3:.2f} GB")
+            print(f"Memory reserved (after backward): {torch.cuda.memory_reserved(DEVICE)/1024**3:.2f} GB")
 
-            optimizer.zero_grad()
-            loss.backward()
             optimizer.step()
-
             tokens = input_ids.numel()
             total_tokens += tokens
             step_tokens += tokens

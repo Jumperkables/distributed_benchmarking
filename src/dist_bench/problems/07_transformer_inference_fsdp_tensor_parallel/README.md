@@ -63,6 +63,89 @@ for layer in model.model.layers:
 fully_shard(model)
 ```
 
+We can find the actual locally stored `DTensor` size with the `.to_local()` function:
+```py
+self.down_proj.weight = (576, 1536)             # Logical shape
+self.down_proj.weight.to_local() = (288, 1536)  # Actual local shape
+```
+![fig](./fig_fspd_shard_comp.png)
+
+![fig](./fig_fsdp_decoder.png)
+
+![fig](./fig_fsdp_subdecoder.png)
+
+### Forward and Backwards:
+For the forward pass, we only need an `all_gather()` to pull parameters in.
+
+For the backwards pass, we need the same `all_gather()` per layer, but we may as well `all_scatter()` the calculated gradients we just calculated.
+
+### Activations Burden
+I assumed that I would easily buy myself enough VRAM for extra batches usin FSDP. However, the max batch size I could fit remained that same. Investigating further, it looks like thats because though the model parameters are indeed split between nodes, the activations and other memory burdens are still playing an outsized role.
+```
+with torch.autograd.graph.saved_tensors_hooks(
+        pack_hook,
+        unpack_hook,
+):
+    before = torch.cuda.memory_allocated()
+    outputs = model(
+        input_ids=input_ids,
+        attention_mask=attention_mask,
+        labels=input_ids,
+    )
+    torch.cuda.synchronize()
+
+    peak = torch.cuda.max_memory_allocated()
+
+    loss = outputs.loss
+
+    print("Activations baseline:", before / 2 ** 30, "GB")
+    print("Activations peak:    ", peak / 2 ** 30, "GB")
+    print("Activations increase:", (peak - before) / 2 ** 30, "GB")
+
+    optimizer.zero_grad()
+    print(f"Memory allocated (before backward): {torch.cuda.memory_allocated(DEVICE)/1024**3:.2f} GB")
+    print(f"Memory reserved (before backward): {torch.cuda.memory_reserved(DEVICE)/1024**3:.2f} GB")
+    print("BACKWARDS BEGINS")
+    loss.backward()
+
+# Measure VRAM burdens
+param_bytes_logical = sum(
+    p.numel() * p.element_size()
+    for p in model.parameters()
+)
+param_bytes_local = sum(
+    p.to_local().numel() * p.element_size()
+    for p in model.parameters()
+)
+grad_bytes = sum(
+    p.grad.numel() * p.grad.element_size()
+    for p in model.parameters()
+    if p.grad is not None
+)
+
+print(f"saved activations: {saved_bytes / 1024 ** 2:.1f} MB")
+print(f"parameters logical: {param_bytes_logical / 1024 ** 2:.1f} MB")
+print(f"parameters local: {param_bytes_local / 1024 ** 2:.1f} MB")
+print(f"gradients:  {grad_bytes / 1024 ** 2:.1f} MB")
+print(f"Memory allocated (after backward): {torch.cuda.memory_allocated(DEVICE)/1024**3:.2f} GB")
+      print(f"Memory reserved (after backward): {torch.cuda.memory_reserved(DEVICE)/1024**3:.2f} GB")
+```
+
+```
+Activations baseline: 0.12635517120361328 GB
+Activations peak:     6.569317817687988 GB
+Activations increase: 6.442962646484375 GB
+Memory allocated (before backward): 5.65 GB
+Memory reserved (before backward): 7.13 GB
+BACKWARDS BEGINS
+saved activations: 9815.5 MB
+parameters logical: 256.6 MB
+parameters local: 128.3 MB
+gradients:  256.6 MB
+Memory allocated (after backward): 0.88 GB
+Memory reserved (after backward): 8.19 GB
+```
+
 ## Tensor Parallel
 Places to read up on this would be:
 - [Large scale transformer parallel](https://docs.pytorch.org/tutorials/intermediate/TP_tutorial.html)
