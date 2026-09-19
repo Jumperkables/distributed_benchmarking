@@ -145,11 +145,30 @@ gradients:  256.6 MB
 Memory allocated (after backward): 0.88 GB
 Memory reserved (after backward): 8.19 GB
 ```
+Tensor parallel is a way to deal with these increased activations
+
 
 ## Tensor Parallel
 Places to read up on this would be:
 - [Large scale transformer parallel](https://docs.pytorch.org/tutorials/intermediate/TP_tutorial.html)
 - [Tensor Parallel API](https://docs.pytorch.org/docs/2.14/distributed.tensor.parallel.html)
+
+### Tensor Parallel: Initial Thoughts
+At this point in the learning process, it feels easy to lose track of exactly what problems each of the main parallel methods are solving if we're not thinking carefully. Why use DDP, FSDP, and Tensor parallel. The above docs mention that the uses of tensor parallel are:
+- As world size becomes huge (128+ GPUs), FSDP collectives such as `allgather` start being dominated by ring latency. Applying TP **ON TOP OF** FSDP, that the FSDP world size could be reduced by e.g. a factor of 8 (though it seems to imply we'd need to take advantage of inter-host setup to gain some tensor parallel improvements that might not scale out if all GPUs were on their own nodes?).
+- Hitting the data parallel limit where the global batch size cant be raised above the total number of GPUs just because the model is THAT big. Tensor/sequence paralle is the only way to 'ballpark' the global batch size and continue scaling.
+- Some model designs smaller local batch sizes might allow tensor parallel to give more optimised matrix shapes for FLOPs in kernels.
+
+I admit at this point, I only had a rough intuition of how these 3 concepts worked from the basics of the Tensor parallel definition, so lets put this all together in my head.
+
+
+### `ParallelStyle` Configs
+- `ColwiseParallel` | `RowwiseParallel`
+- `SequenceParallel`
+- `PrepareModuleInput` & `PrepareModuleOutput`
+
+
+## Pipeline parallel
 
 
 ## Unused Parameters and Graph Breaking
